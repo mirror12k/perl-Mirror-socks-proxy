@@ -13,6 +13,8 @@ use Mirror::Reflective::ServiceConnection;
 use Mirror::Reflective::ClientConnection;
 
 
+$| = 1;
+
 
 sub new {
 	my ($class, %args) = @_;
@@ -45,11 +47,14 @@ sub start {
 			# say "ready: @ready";
 			foreach my $socket (@ready) {
 				if ($socket == $self->{server_socket}) {
+					# say "processing new socket on $socket";
 					my $new_socket = $socket->accept;
 					$self->new_socket($new_socket);
 				} elsif (eof $socket) {
+					# say "processing death $socket";
 					$self->disconnect_socket($socket);
 				} else {
+					# say "processing data $socket";
 					$self->on_data($socket);
 				}
 			}
@@ -80,12 +85,17 @@ sub new_connection {
 sub disconnect_socket {
 	my ($self, $socket) = @_;
 	my $connection = $self->{socket_data}{"$socket"};
+	unless (defined $connection) {
+		warn "missing connection object for $socket";
+		return
+	}
 	# say "disconnecting socket $socket";
 
 	$connection->on_disconnect($self);
 	$self->{selector}->remove($socket);
 	# NOTE FOR FUTURE: closing the socket before removing it from the selector will result in a glitched and broken selector
 	$socket->close;
+	# say "deleted socket data for $socket";
 	delete $self->{socket_data}{"$socket"};
 }
 
@@ -98,6 +108,10 @@ sub disconnect_connection {
 sub on_data {
 	my ($self, $socket) = @_;
 	my $connection = $self->{socket_data}{"$socket"};
+	unless (defined $connection) {
+		warn "missing connection object for $socket";
+		return
+	}
 
 	my $len;
 	do {
@@ -105,13 +119,15 @@ sub on_data {
 		# say "got data from $socket: ", unpack 'H*', $buffer if $len;
 	} while ($len);
 
+	# say "read " . length $connection->{buffer};
 	warn "nothing read from socket $socket ($connection->{peer_address})" unless length $connection->{buffer};
 
 	$connection->on_data($self);
 }
 
 sub main {
-	Mirror::Reflective->new->start
+	$SIG{PIPE} = 'IGNORE';
+	Mirror::Reflective->new->start;
 }
 
 caller or main(@ARGV);
