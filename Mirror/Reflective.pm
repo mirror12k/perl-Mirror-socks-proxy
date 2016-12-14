@@ -50,7 +50,7 @@ sub start {
 					# say "processing new socket on $socket";
 					my $new_socket = $socket->accept;
 					$self->new_socket($new_socket);
-				} elsif (eof $socket) {
+				} elsif (not $socket->connected) {
 					# say "processing death $socket";
 					$self->disconnect_socket($socket);
 				} else {
@@ -80,6 +80,12 @@ sub new_connection {
 	$connection->on_connect($self);
 
 	$self->{selector}->add($connection->{socket});
+}
+
+sub update_connection_socket {
+	my ($self, $old_socket, $connection) = @_;
+	delete $self->{socket_data}{"$old_socket"};
+	$self->{socket_data}{"$connection->{socket}"} = $connection;
 }
 
 sub disconnect_socket {
