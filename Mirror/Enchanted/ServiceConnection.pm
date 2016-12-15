@@ -45,7 +45,7 @@ sub on_data {
 sub process_response_head {
 	my ($self, $req) = @_;
 
-	say "got response head: ", $req->as_string;
+	say "got response head: ", $req->status_line;
 
 	return $req
 }

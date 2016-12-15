@@ -12,14 +12,19 @@ use IO::Socket::SSL;
 
 use Mirror::Enchanted::ServiceConnection;
 use Mirror::Enchanted::ClientConnection;
+use SSLCertificateFactory;
+
+sub new {
+	my ($class, %args) = @_;
+	my $self = $class->SUPER::new(%args);
+
+	$self->{cert_factory} = SSLCertificateFactory->new;
+
+	return $self
+}
 
 sub new_socket {
 	my ($self, $socket) = @_;
-
-	# if ($socket->peerport == 443) {
-	# 	$self->new_connection(Mirror::Enchanted::ClientConnection->new($socket, is_ssl => 1)) if $socket;
-	# } else {
-	# }
 	$self->new_connection(Mirror::Enchanted::ClientConnection->new($socket));
 }
 

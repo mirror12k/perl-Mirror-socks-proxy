@@ -48,10 +48,10 @@ sub on_data {
 		return $mir->disconnect_connection($self) unless $socks_version == 4;
 		return $mir->disconnect_connection($self) unless $command_code == 1;
 
-		my $hostport;
+		my $host;
 		if ($ip eq '0.0.0.1') {
 			if ($self->{buffer} =~ /\A(.)(.)(.{2})(.{4})([^\0]*\0)([^\0]*)\0/) {
-				$hostport = "$6:$port";
+				$host = "$6";
 				$self->{buffer} = $';
 				$self->{is_socks4a_connection} = 1;
 			} else {
@@ -59,9 +59,11 @@ sub on_data {
 				return $mir->disconnect_connection($self);
 			}
 		} else {
-			$hostport = "$ip:$port";
+			$host = "$ip";
 			$self->{buffer} = $';
 		}
+
+		my $hostport = "$host:$port";
 
 		my $connection;
 		if ($port == 443) {
@@ -75,7 +77,7 @@ sub on_data {
 			say "socks connected $hostport";
 			$self->{socket}->print("\0\x5a\0\0\0\0\0\0");
 			$self->{is_handshake_complete} = 1;
-			$self->{paired_connection} = Mirror::Enchanted::ServiceConnection->new($connection->{sock}, is_service_connection => 1, paired_connection => $self);
+			$self->{paired_connection} = Mirror::Enchanted::ServiceConnection->new($connection->{sock}, paired_connection => $self);
 
 			$mir->new_connection($self->{paired_connection});
 
@@ -84,8 +86,8 @@ sub on_data {
 				my $old_socket = $self->{socket};
 				my $new_socket = IO::Socket::SSL->start_SSL($self->{socket},
 					SSL_server => 1,
-					SSL_cert_file => 'cert.pem',
-					SSL_key_file => 'key.pem',
+					SSL_cert_file => $mir->{cert_factory}->certificate($host),
+					SSL_key_file => 'ssl_factory/key.pem',
 					Blocking => 0,
 				);
 				warn "failed to ssl handshake insock: $SSL_ERROR" unless $new_socket;
@@ -130,7 +132,7 @@ sub on_disconnect {
 sub process_request {
 	my ($self, $req) = @_;
 
-	say "got request: ", $req->as_string;
+	say "got request: ", $req->method . " " . $req->uri;
 
 	return $req
 }
