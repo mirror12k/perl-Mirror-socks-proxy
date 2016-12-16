@@ -8,12 +8,11 @@ use feature 'say';
 use IO::Select;
 use Iron::TCP;
 use IO::Socket::INET;
+use IO::Socket::SSL;
 
 use Mirror::Reflective::ServiceConnection;
 use Mirror::Reflective::ClientConnection;
 
-
-$| = 1;
 
 
 sub new {
@@ -118,17 +117,23 @@ sub on_data {
 		warn "missing connection object for $socket";
 		return
 	}
-
 	my $len;
 	do {
 		$len = read $socket, $connection->{buffer}, 4096, length $connection->{buffer};
-		# say "got data from $socket: ", unpack 'H*', $buffer if $len;
+		# say "debug: $len";
+		# say "got data from $socket: ($len) ", unpack 'H*', $connection->{buffer} if $len;
 	} while ($len);
 
 	# say "read " . length $connection->{buffer};
-	warn "nothing read from socket $socket ($connection->{peer_address})" unless length $connection->{buffer};
-
-	$connection->on_data($self);
+	# warn "nothing read from socket $socket ($connection->{peer_address}) : $!, $SSL_ERROR" unless length $connection->{buffer};
+	unless (length $connection->{buffer}) {
+		warn "nothing read from socket $socket ($connection->{peer_address}) : $!, $SSL_ERROR";
+		if ($SSL_ERROR ne 'SSL wants a read first') {
+			$self->disconnect_connection($connection);
+		}
+	} else {
+		$connection->on_data($self);
+	}
 }
 
 sub main {

@@ -24,7 +24,7 @@ sub new {
 
 sub certificate {
 	my ($self, $name) = @_;
-	croak "invalid certificate name $name" unless $name =~ /\A[a-zA-Z0-9_\.]+\Z/;
+	croak "invalid certificate name $name" unless $name =~ /\A[a-zA-Z0-9_\-\.]+\Z/;
 
 	return $self->{existing_certificates}{$name} if exists $self->{existing_certificates}{$name};
 
@@ -33,7 +33,7 @@ sub certificate {
 
 sub create_certificate {
 	my ($self, $name) = @_;
-	croak "invalid certificate name $name" unless $name =~ /\A[a-zA-Z0-9_\.]+\Z/;
+	croak "invalid certificate name $name" unless $name =~ /\A[a-zA-Z0-9_\-\.]+\Z/;
 
 	my $hash = sha256_hex ($name);
 
@@ -48,7 +48,8 @@ DNS.1       = $name
 	my $certificate_file = "$self->{certificate_directory}/$hash.pem";
 
 	my $d = $self->{certificate_directory};
-	my $serial = time . int rand;
+	my $serial = time * int rand 1000000;
+	say "creating certificate for $name with serial $serial ($hash)";
 	`openssl x509 -req -sha256 -days 30 -in $d/example.csr -CAkey $d/rootkey.pem -CA $d/root.pem -set_serial $serial -out $certificate_file -extfile $cnf`;
 
 	$self->{existing_certificates}{$name} = $certificate_file;
