@@ -1,4 +1,5 @@
 package Mirror::Enchanted::ClientConnection;
+use parent 'Mirror::PairedConnection';
 use strict;
 use warnings;
 
@@ -16,14 +17,15 @@ use Mirror::Enchanted::ServiceConnection;
 
 sub new {
 	my ($class, $socket, %args) = @_;
-	my $self = bless { buffer => '', socket => $socket, is_header => 1, %args }, $class;
+	my $self = $class->SUPER::new($socket, is_header => 1, %args);
+	# my $self = bless { buffer => '', socket => $socket, is_header => 1, %args }, $class;
 	return $self
 }
 
-sub on_connect {
-	my ($self, $mir) = @_;
-	say "new " . ref ($self) . " connection $self->{peer_address} ($self->{socket})";
-}
+# sub on_connect {
+# 	my ($self, $mir) = @_;
+# 	say "new " . ref ($self) . " connection $self->{peer_address} ($self->{socket})";
+# }
 
 sub on_data {
 	my ($self, $mir) = @_;
@@ -49,7 +51,6 @@ sub on_data {
 				$self->{is_header} = 1;
 
 				$mir->on_request($mir, $self->{request});
-				# warn "may have just got a sigpipe" unless $self->{paired_connection}{socket}->print($self->{request}->as_string);
 			}
 		}
 
@@ -90,7 +91,7 @@ sub on_data {
 
 		if ($connection and $connection->connected) {
 			say "socks connected $hostport";
-			$self->{socket}->print("\0\x5a\0\0\0\0\0\0");
+			$self->print("\0\x5a\0\0\0\0\0\0");
 			$self->{is_handshake_complete} = 1;
 			$self->{paired_connection} = Mirror::Enchanted::ServiceConnection->new($connection->{sock}, paired_connection => $self);
 
@@ -119,7 +120,7 @@ sub on_data {
 				$mir->on_data($self->{socket});
 			}
 		} else {
-			$self->{socket}->print("\0\x5b\0\0\0\0\0\0");
+			$self->print("\0\x5b\0\0\0\0\0\0");
 			return $mir->disconnect_connection($self);
 		}
 	} else {
@@ -130,28 +131,28 @@ sub on_data {
 	$self->{buffer} = '';
 }
 
-sub on_disconnect {
-	my ($self, $mir) = @_;
-	say "disconnected " . ref ($self) . " connection $self->{peer_address} ($self->{socket})";
-	# say "disconnected client $self->{peer_address}";
+# sub on_disconnect {
+# 	my ($self, $mir) = @_;
+# 	say "disconnected " . ref ($self) . " connection $self->{peer_address} ($self->{socket})";
+# 	# say "disconnected client $self->{peer_address}";
 
-	if (defined $self->{paired_connection}) {
-		# say "disconnecting paired connection";
-		my $paired_connection = $self->{paired_connection};
-		delete $self->{paired_connection}{paired_connection};
-		delete $self->{paired_connection};
-		$mir->disconnect_connection($paired_connection) if $paired_connection->{socket}->connected;
-	}
-}
+# 	if (defined $self->{paired_connection}) {
+# 		# say "disconnecting paired connection";
+# 		my $paired_connection = $self->{paired_connection};
+# 		delete $self->{paired_connection}{paired_connection};
+# 		delete $self->{paired_connection};
+# 		$mir->disconnect_connection($paired_connection) if $paired_connection->{socket}->connected;
+# 	}
+# }
 
 sub on_request {
 	my ($self, $mir, $req) = @_;
 	my $res = $mir->on_request($self, $req);
 
 	if (defined $res) {
-		warn "may have just got a sigpipe" unless $self->{socket}->print($res->as_string);
+		$self->print($res->as_string);
 	} else {
-		warn "may have just got a sigpipe" unless $self->{paired_connection}{socket}->print($req->as_string);
+		$self->{paired_connection}->print($req->as_string);
 	}
 }
 

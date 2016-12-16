@@ -33,29 +33,33 @@ sub on_disconnect {
 
 sub print {
 	my ($self, $msg) = @_;
-	my $wrote = $self->{socket}->print($msg);
-	unless ($wrote) {
-		warn "may have just got a sigpipe: $?, $!";#, $SSL_ERROR;
+	if (ref $self->{socket} eq 'IO::Socket::SSL') {
+		$self->print_ssl($msg);		
+	} else {
+		my $wrote = $self->{socket}->print($msg);
+		unless ($wrote) {
+			warn "may have just got a sigpipe: $?, $!";#, $SSL_ERROR;
+		}
+		return $wrote
 	}
-	return $wrote
 }
 
-# sub print {
-# 	my ($self, $msg) = @_;
-# 	say "debug: ", unpack 'H*', $msg;
-# 	# my $write_count = 0;
-# 	my $wrote = 0;
-# 	do {
-# 		my $wrote_more = $self->{socket}->print(substr $msg, $wrote);
-# 		say "debug $wrote_more";
-# 		unless ($wrote_more) {
-# 			warn "may have just got a sigpipe: $?, $!";#, $SSL_ERROR;
-# 			return $wrote
-# 		}
-# 		$wrote += $wrote_more;
-# 		# $write_count++;
-# 	} while ($wrote < length $msg);
-# 	return $wrote
-# }
+sub print_ssl {
+	my ($self, $msg) = @_;
+	# say "debug: ", unpack 'H*', $msg;
+	# my $write_count = 0;
+	my $wrote = 0;
+	do {
+		my $wrote_more = $self->{socket}->print(substr $msg, $wrote);
+		# say "debug $wrote_more";
+		unless ($wrote_more) {
+			warn "may have just got a sigpipe: $?, $!";#, $SSL_ERROR;
+			return $wrote
+		}
+		$wrote += $wrote_more;
+		# $write_count++;
+	} while ($wrote < length $msg);
+	return $wrote
+}
 
 1;

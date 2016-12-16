@@ -21,7 +21,7 @@ sub on_data {
 			my $res = HTTP::Response->parse("$`\r\n\r\n");
 			$self->{response} = $res;
 			$res = $mir->on_response_head($self, $res);
-			warn "may have just got a sigpipe" unless $self->{paired_connection}{socket}->print($res->as_string);
+			$self->{paired_connection}->print($res->as_string);
 
 			if (defined $res->header('Content-Length') and 0 < int $res->header('Content-Length')) {
 				$self->{is_header} = 0;
@@ -45,22 +45,7 @@ sub on_data {
 			$self->{response} = $mir->on_response($self, $self->{response});
 			$self->{is_header} = 1;
 
-			my $wrote = $self->{paired_connection}{socket}->print($self->{response}->content);
-			warn "may have just got a sigpipe" unless $wrote;
-			# say "wrote $wrote";
-
-			my $write_count = 1;
-			while ($wrote < length $self->{response}->content) {
-				my $wrote_more = $self->{paired_connection}{socket}->print(substr $self->{response}->content, $wrote);
-				unless ($wrote_more) {
-					warn "may have just got a sigpipe";
-					last;
-				}
-				# say "wrote_more $wrote_more";
-				$wrote += $wrote_more;
-				$write_count++;
-			}
-			# say "wrote $wrote over $write_count writes";
+			$self->{paired_connection}->print($self->{response}->content);
 		}
 	} elsif (defined $self->{chunked_content_length} and length $self->{buffer} >= $self->{chunked_content_length} + 2) {
 		$self->{response}->content($self->{response}->content . substr $self->{buffer}, 0, $self->{chunked_content_length});
@@ -72,23 +57,7 @@ sub on_data {
 			my $length_info = sprintf "%x\r\n", length $self->{response}->content;
 
 			my $data = $length_info . $self->{response}->content . "\r\n0\r\n\r\n";
-
-			my $wrote = $self->{paired_connection}{socket}->print($data);
-			warn "may have just got a sigpipe" unless $wrote;
-			# say "wrote $wrote";
-
-			my $write_count = 1;
-			while ($wrote < length $data) {
-				my $wrote_more = $self->{paired_connection}{socket}->print(substr $data, $wrote);
-				unless ($wrote_more) {
-					warn "may have just got a sigpipe";
-					last;
-				}
-				# say "wrote_more $wrote_more";
-				$wrote += $wrote_more;
-				$write_count++;
-			}
-			# say "wrote $wrote over $write_count writes";
+			$self->{paired_connection}->print($data);
 		}
 		$self->{chunked_content_length} = undef;
 		
