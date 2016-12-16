@@ -14,8 +14,6 @@ use Mirror::Enchanted::ServiceConnection;
 use Mirror::Enchanted::ClientConnection;
 use SSLCertificateFactory;
 
-# $IO::Socket::SSL::DEBUG = 3;
-
 
 
 sub new {

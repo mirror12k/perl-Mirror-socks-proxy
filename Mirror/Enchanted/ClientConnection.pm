@@ -40,6 +40,8 @@ sub on_data {
 					$self->{is_header} = 0;
 					$self->{content_length} = int $req->header('Content-Length');
 					$self->{request} = $req;
+
+					$self->on_data($mir) if length $self->{buffer};
 				} else {
 					$self->on_request($mir, $req);
 				}
@@ -50,7 +52,7 @@ sub on_data {
 				$self->{buffer} = substr $self->{buffer}, $self->{content_length};
 				$self->{is_header} = 1;
 
-				$mir->on_request($mir, $self->{request});
+				$self->on_request($mir, $self->{request});
 			}
 		}
 
@@ -117,7 +119,7 @@ sub on_data {
 			# tail call on_data if the client sent more data than just the header
 			if (length $self->{buffer}) {
 				say "looping ondata";
-				$mir->on_data($self->{socket});
+				$self->on_data($mir);
 			}
 		} else {
 			$self->print("\0\x5b\0\0\0\0\0\0");
@@ -130,20 +132,6 @@ sub on_data {
 
 	$self->{buffer} = '';
 }
-
-# sub on_disconnect {
-# 	my ($self, $mir) = @_;
-# 	say "disconnected " . ref ($self) . " connection $self->{peer_address} ($self->{socket})";
-# 	# say "disconnected client $self->{peer_address}";
-
-# 	if (defined $self->{paired_connection}) {
-# 		# say "disconnecting paired connection";
-# 		my $paired_connection = $self->{paired_connection};
-# 		delete $self->{paired_connection}{paired_connection};
-# 		delete $self->{paired_connection};
-# 		$mir->disconnect_connection($paired_connection) if $paired_connection->{socket}->connected;
-# 	}
-# }
 
 sub on_request {
 	my ($self, $mir, $req) = @_;
