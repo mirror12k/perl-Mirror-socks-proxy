@@ -10,7 +10,6 @@ use Iron::TCP;
 use IO::Socket::INET;
 use IO::Socket::SSL;
 
-use Mirror::Reflective::ServiceConnection;
 use Mirror::Reflective::ClientConnection;
 
 

@@ -1,5 +1,5 @@
 package Mirror::Reflective::ClientConnection;
-use parent 'Mirror::Reflective::ServiceConnection';
+use parent 'Mirror::PairedConnection';
 use strict;
 use warnings;
 
@@ -44,19 +44,19 @@ sub on_data {
 		my $connection = Iron::TCP->new(hostport => $hostport);
 		if ($connection and $connection->connected) {
 			say "socks connected $hostport";
-			$self->{socket}->print("\0\x5a\0\0\0\0\0\0");
+			$self->print("\0\x5a\0\0\0\0\0\0");
 			$self->{is_handshake_complete} = 1;
-			$self->{paired_connection} = Mirror::Reflective::ServiceConnection->new($connection->{sock}, is_service_connection => 1, paired_connection => $self);
+			$self->{paired_connection} = Mirror::PairedConnection->new($connection->{sock}, paired_connection => $self);
 
 			$mir->new_connection($self->{paired_connection});
 
 			# tail call on_data if the client sent more data than just the header
 			if (length $self->{buffer}) {
 				say "looping ondata";
-				$mir->on_data($self->{socket});
+				$self->on_data($mir);
 			}
 		} else {
-			$self->{socket}->print("\0\x5b\0\0\0\0\0\0");
+			$self->print("\0\x5b\0\0\0\0\0\0");
 			return $mir->disconnect_connection($self);
 		}
 	} else {
