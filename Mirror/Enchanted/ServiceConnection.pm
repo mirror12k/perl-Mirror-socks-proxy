@@ -96,7 +96,7 @@ sub on_data {
 	} elsif ($self->{buffer} =~ /\A([a-fA-F0-9]+)\r?\n/) {
 		my $len = hex $1;
 		$self->{buffer} = $';
-		warn "got len: $len";
+		# warn "got len: $len";
 		# if ($len == 0) {
 		# } else {
 		$self->{chunked_content_length} = $len;

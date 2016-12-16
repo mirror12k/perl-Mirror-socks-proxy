@@ -22,7 +22,12 @@ sub new {
 	my ($class, %args) = @_;
 	my $self = $class->SUPER::new(%args);
 
-	$self->{cert_factory} = SSLCertificateFactory->new;
+	$self->{cert_factory} = SSLCertificateFactory->new(
+		root_key => 'ssl_factory_config/rootkey.pem',
+		root_certificate => 'ssl_factory_config/root.pem',
+		certificate_key => 'ssl_factory_config/key.pem',
+		certificate_request => 'ssl_factory_config/request.csr',
+	);
 
 	return $self
 }
@@ -34,10 +39,9 @@ sub new_socket {
 
 sub on_request {
 	my ($self, $con, $req) = @_;
-
 	say "got request: ", $req->method . " " . $req->uri;
 
-	return $req
+	return
 }
 
 sub on_response_head {

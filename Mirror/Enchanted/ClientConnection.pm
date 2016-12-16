@@ -33,8 +33,23 @@ sub on_data {
 			if ($self->{buffer} =~ /\r?\n\r?\n/s) {
 				$self->{buffer} = $';
 				my $req = HTTP::Request->parse("$`\r\n\r\n");
-				$req = $mir->on_request($self, $req);
-				warn "may have just got a sigpipe" unless $self->{paired_connection}{socket}->print($req->as_string);
+
+				if (defined $req->header('Content-Length') and 0 < int $req->header('Content-Length')) {
+					$self->{is_header} = 0;
+					$self->{content_length} = int $req->header('Content-Length');
+					$self->{request} = $req;
+				} else {
+					$self->on_request($mir, $req);
+				}
+			}
+		} else {
+			if (length $self->{buffer} >= $self->{content_length}) {
+				$self->{request}->content(substr $self->{buffer}, 0, $self->{content_length});
+				$self->{buffer} = substr $self->{buffer}, $self->{content_length};
+				$self->{is_header} = 1;
+
+				$mir->on_request($mir, $self->{request});
+				# warn "may have just got a sigpipe" unless $self->{paired_connection}{socket}->print($self->{request}->as_string);
 			}
 		}
 
@@ -87,7 +102,7 @@ sub on_data {
 				my $new_socket = IO::Socket::SSL->start_SSL($self->{socket},
 					SSL_server => 1,
 					SSL_cert_file => $mir->{cert_factory}->certificate($host),
-					SSL_key_file => 'ssl_factory/key.pem',
+					SSL_key_file => $mir->{cert_factory}{certificate_key},
 					Blocking => 0,
 				);
 				warn "failed to ssl handshake insock: $!, $SSL_ERROR" unless $new_socket;
@@ -126,6 +141,17 @@ sub on_disconnect {
 		delete $self->{paired_connection}{paired_connection};
 		delete $self->{paired_connection};
 		$mir->disconnect_connection($paired_connection) if $paired_connection->{socket}->connected;
+	}
+}
+
+sub on_request {
+	my ($self, $mir, $req) = @_;
+	my $res = $mir->on_request($self, $req);
+
+	if (defined $res) {
+		warn "may have just got a sigpipe" unless $self->{socket}->print($res->as_string);
+	} else {
+		warn "may have just got a sigpipe" unless $self->{paired_connection}{socket}->print($req->as_string);
 	}
 }
 

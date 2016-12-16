@@ -134,7 +134,7 @@ sub on_data {
 		# } elsif ($SSL_ERROR eq '') {
 			# warn "empty read from ", $socket->fileno;
 		} else {
-			warn "nothing read from socket ", $socket->fileno, " ($connection->{peer_address}) : ", join ', ', $!, $SSL_ERROR, $socket->errstr, $socket->pending;
+			warn "nothing read from socket ", $socket->fileno, " ($connection->{peer_address}) : ", join ', ', $!, $SSL_ERROR; # , $socket->errstr, $socket->pending
 			$self->disconnect_connection($connection);
 		}
 	} else {
