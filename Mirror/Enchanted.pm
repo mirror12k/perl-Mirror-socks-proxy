@@ -32,6 +32,30 @@ sub new_socket {
 	$self->new_connection(Mirror::Enchanted::ClientConnection->new($socket));
 }
 
+sub on_request {
+	my ($self, $con, $req) = @_;
+
+	say "got request: ", $req->method . " " . $req->uri;
+
+	return $req
+}
+
+sub on_response_head {
+	my ($self, $con, $res) = @_;
+
+	say "got response head: ", $res->status_line;
+
+	return $res
+}
+
+sub on_response {
+	my ($self, $con, $res) = @_;
+
+	say "got response: ", $res->status_line;
+
+	return $res
+}
+
 sub main {
 	$SIG{PIPE} = 'IGNORE';
 	Mirror::Enchanted->new->start;

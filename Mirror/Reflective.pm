@@ -127,8 +127,14 @@ sub on_data {
 	# say "read " . length $connection->{buffer};
 	# warn "nothing read from socket $socket ($connection->{peer_address}) : $!, $SSL_ERROR" unless length $connection->{buffer};
 	unless (length $connection->{buffer}) {
-		warn "nothing read from socket $socket ($connection->{peer_address}) : $!, $SSL_ERROR";
-		if ($SSL_ERROR ne 'SSL wants a read first') {
+		if ($SSL_ERROR eq SSL_WANT_READ) {
+			# do nothing, according to openssl docs this is a "something moved but not enough"
+		# } elsif ($socket->errstr eq SSL_WANT_READ) {
+			# do nothing, according to openssl docs this is a "something moved but not enough"
+		# } elsif ($SSL_ERROR eq '') {
+			# warn "empty read from ", $socket->fileno;
+		} else {
+			warn "nothing read from socket ", $socket->fileno, " ($connection->{peer_address}) : ", join ', ', $!, $SSL_ERROR, $socket->errstr, $socket->pending;
 			$self->disconnect_connection($connection);
 		}
 	} else {

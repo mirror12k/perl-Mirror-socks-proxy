@@ -37,7 +37,7 @@ sub create_certificate {
 
 	my $hash = sha256_hex ($name);
 
-	my $cnf = Sugar::IO::File->new("$self->{certificate_directory}/$hash.cnf");
+	my $cnf = Sugar::IO::File->new("$self->{certificate_directory}/$name.cnf");
 	$cnf->write("
 basicConstraints = CA:FALSE
 subjectAltName          = \@alternate_names
@@ -45,7 +45,7 @@ extendedKeyUsage =serverAuth
 [ alternate_names ]
 DNS.1       = $name
 ");
-	my $certificate_file = "$self->{certificate_directory}/$hash.pem";
+	my $certificate_file = "$self->{certificate_directory}/$name.pem";
 
 	my $d = $self->{certificate_directory};
 	my $serial = time * int rand 1000000;

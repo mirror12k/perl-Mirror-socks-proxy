@@ -20,7 +20,7 @@ sub on_data {
 			$self->{buffer} = $';
 			my $res = HTTP::Response->parse("$`\r\n\r\n");
 			$self->{response} = $res;
-			$res = $self->process_response_head($res);
+			$res = $mir->on_response_head($self, $res);
 			warn "may have just got a sigpipe" unless $self->{paired_connection}{socket}->print($res->as_string);
 
 			if (defined $res->header('Content-Length') and 0 < int $res->header('Content-Length')) {
@@ -42,7 +42,7 @@ sub on_data {
 		if (length $self->{buffer} >= $self->{content_length}) {
 			$self->{response}->content(substr $self->{buffer}, 0, $self->{content_length});
 			$self->{buffer} = substr $self->{buffer}, $self->{content_length};
-			$self->{response} = $self->process_response($self->{response});
+			$self->{response} = $mir->on_response($self, $self->{response});
 			$self->{is_header} = 1;
 
 			my $wrote = $self->{paired_connection}{socket}->print($self->{response}->content);
@@ -60,7 +60,7 @@ sub on_data {
 				$wrote += $wrote_more;
 				$write_count++;
 			}
-			say "wrote $wrote over $write_count writes";
+			# say "wrote $wrote over $write_count writes";
 		}
 	} elsif (defined $self->{chunked_content_length} and length $self->{buffer} >= $self->{chunked_content_length} + 2) {
 		$self->{response}->content($self->{response}->content . substr $self->{buffer}, 0, $self->{chunked_content_length});
@@ -68,7 +68,7 @@ sub on_data {
 
 		if ($self->{chunked_content_length} == 0) {
 			$self->{is_header} = 1;
-			$self->{response} = $self->process_response($self->{response});
+			$self->{response} = $mir->on_response($self, $self->{response});
 			my $length_info = sprintf "%x\r\n", length $self->{response}->content;
 
 			my $data = $length_info . $self->{response}->content . "\r\n0\r\n\r\n";
@@ -88,8 +88,7 @@ sub on_data {
 				$wrote += $wrote_more;
 				$write_count++;
 			}
-			say "wrote $wrote over $write_count writes";
-			# warn "may have just got a sigpipe" unless $self->{paired_connection}{socket}->print("5\r\nquack\r\n0\r\n\r\n");
+			# say "wrote $wrote over $write_count writes";
 		}
 		$self->{chunked_content_length} = undef;
 		
@@ -104,26 +103,6 @@ sub on_data {
 		# }
 		$self->on_data($mir) if length $self->{buffer};
 	}
-}
-
-sub process_response_head {
-	my ($self, $req) = @_;
-
-	say "got response head: ", $req->status_line;
-	# say "got response head: ", $req->as_string;
-
-	return $req
-}
-
-sub process_response {
-	my ($self, $req) = @_;
-
-	# say "got response: ", $req->status_line;
-	say "got response: ", $req->status_line;
-	say "with content length ", length $req->content;
-	# say "got response: ", $req->decoded_content;
-
-	return $req
 }
 
 1;

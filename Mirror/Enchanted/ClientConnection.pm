@@ -33,7 +33,7 @@ sub on_data {
 			if ($self->{buffer} =~ /\r?\n\r?\n/s) {
 				$self->{buffer} = $';
 				my $req = HTTP::Request->parse("$`\r\n\r\n");
-				$req = $self->process_request($req);
+				$req = $mir->on_request($self, $req);
 				warn "may have just got a sigpipe" unless $self->{paired_connection}{socket}->print($req->as_string);
 			}
 		}
@@ -82,7 +82,7 @@ sub on_data {
 			$mir->new_connection($self->{paired_connection});
 
 			if ($self->{is_ssl}) {
-				say "upgrading to ssl on $self->{socket}";
+				# say "upgrading to ssl on $self->{socket}";
 				my $old_socket = $self->{socket};
 				my $new_socket = IO::Socket::SSL->start_SSL($self->{socket},
 					SSL_server => 1,
@@ -90,9 +90,9 @@ sub on_data {
 					SSL_key_file => 'ssl_factory/key.pem',
 					Blocking => 0,
 				);
-				warn "failed to ssl handshake insock: $SSL_ERROR" unless $new_socket;
+				warn "failed to ssl handshake insock: $!, $SSL_ERROR" unless $new_socket;
 				return $mir->disconnect_connection($self) unless $new_socket;
-				say "upgraded to ssl on $self->{socket}";
+				# say "upgraded to ssl on $self->{socket}";
 				$self->{socket} = $new_socket;
 
 				$mir->update_connection_socket($old_socket, $self);
@@ -121,20 +121,12 @@ sub on_disconnect {
 	# say "disconnected client $self->{peer_address}";
 
 	if (defined $self->{paired_connection}) {
-		say "disconnecting paired connection";
+		# say "disconnecting paired connection";
 		my $paired_connection = $self->{paired_connection};
 		delete $self->{paired_connection}{paired_connection};
 		delete $self->{paired_connection};
 		$mir->disconnect_connection($paired_connection) if $paired_connection->{socket}->connected;
 	}
-}
-
-sub process_request {
-	my ($self, $req) = @_;
-
-	say "got request: ", $req->method . " " . $req->uri;
-
-	return $req
 }
 
 1;
