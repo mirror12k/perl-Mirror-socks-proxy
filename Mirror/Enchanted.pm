@@ -18,6 +18,13 @@ use SSLCertificateFactory;
 an effective http and https intercepting proxy as a socks4/4a server.
 this is a callable package, so you can call `perl Mirror/Enchanted.pm` to immediately initialize a new server.
 
+the ssl intercepting is securely established using freshly created certificates with SSLCertificateFactory.
+note that you will need to generate a root CA certificate and install it in your browser in order to have error-less communication.
+
+note: the code cheats a little with ssl by simply looking for port 443.
+optimally the server would peek the socket and read an ssl frame from it.
+also note that websockets and anything else other than http is unsupported.
+
 =cut
 
 =head2 Mirror::Enchanted->new(%args)
