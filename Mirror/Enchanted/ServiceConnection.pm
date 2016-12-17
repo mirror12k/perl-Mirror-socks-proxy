@@ -5,7 +5,6 @@ use warnings;
 
 use feature 'say';
 
-use IO::Select;
 use Iron::TCP;
 use Iron::SSL;
 use HTTP::Response;

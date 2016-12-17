@@ -10,7 +10,7 @@ use Iron::TCP;
 use IO::Socket::INET;
 
 
-
+# hook on_data event to perform a socks handshake
 sub on_data {
 	my ($self, $mir) = @_;
 

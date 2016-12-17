@@ -5,7 +5,6 @@ use warnings;
 
 use feature 'say';
 
-use IO::Select;
 use Iron::TCP;
 use IO::Socket::SSL;
 use Iron::SSL;
@@ -18,20 +17,15 @@ use Mirror::Enchanted::ServiceConnection;
 sub new {
 	my ($class, $socket, %args) = @_;
 	my $self = $class->SUPER::new($socket, is_header => 1, %args);
-	# my $self = bless { buffer => '', socket => $socket, is_header => 1, %args }, $class;
 	return $self
 }
-
-# sub on_connect {
-# 	my ($self, $mir) = @_;
-# 	say "new " . ref ($self) . " connection $self->{peer_address} ($self->{socket})";
-# }
 
 sub on_data {
 	my ($self, $mir) = @_;
 
 	if ($self->{is_handshake_complete}) {
-		if ($self->{is_header}) {
+		# HTTP::Request parsing code
+		if ($self->{is_header}) { # receive header
 			if ($self->{buffer} =~ /\r?\n\r?\n/s) {
 				$self->{buffer} = $';
 				my $req = HTTP::Request->parse("$`\r\n\r\n");
@@ -46,7 +40,7 @@ sub on_data {
 					$self->on_request($mir, $req);
 				}
 			}
-		} else {
+		} else { #receive body
 			if (length $self->{buffer} >= $self->{content_length}) {
 				$self->{request}->content(substr $self->{buffer}, 0, $self->{content_length});
 				$self->{buffer} = substr $self->{buffer}, $self->{content_length};
@@ -57,6 +51,7 @@ sub on_data {
 		}
 
 	} elsif ($self->{buffer} =~ /\A(.)(.)(.{2})(.{4})([^\0]*\0)/s) {
+		#socks4/4a handshake code
 		my ($socks_version, $command_code, $port, $ip) = ($1, $2, $3, $4);
 		$socks_version = ord $socks_version;
 		$command_code = ord $command_code;
@@ -84,6 +79,7 @@ sub on_data {
 		my $hostport = "$host:$port";
 
 		my $connection;
+		# TODO: peek the socket and promote it to SSL only after we have established it to be SSL
 		if ($port == 443) {
 			$self->{is_ssl} = 1;
 			$connection = Iron::SSL->new(hostport => $hostport);
@@ -138,8 +134,10 @@ sub on_request {
 	my $res = $mir->on_request($self, $req);
 
 	if (defined $res) {
+		# if the callback event produced an HTTP::Response object, immediately print that out
 		$self->print($res->as_string);
 	} else {
+		# otherwise patch it to the peer
 		$self->{paired_connection}->print($req->as_string);
 	}
 }
