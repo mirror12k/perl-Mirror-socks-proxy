@@ -57,8 +57,7 @@ sub on_data {
 
 			my $content = $self->{response}->content;
 			my $length_info = sprintf "%x\r\n", length $content;
-			# my $data = "$length_info$content\r\n0\r\n\r\n";
-			$self->{response}->content("$length_info$content\r\n0");
+			$self->{response}->content("$length_info$content\r\n0\r\n\r\n");
 			$self->{paired_connection}->print($self->{response}->as_string);
 			$self->{response}->content($content);
 		}
