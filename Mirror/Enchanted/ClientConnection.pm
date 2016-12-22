@@ -138,6 +138,7 @@ sub on_request {
 		$self->print($res->as_string);
 	} else {
 		# otherwise patch it to the peer
+		$self->{paired_connection}{request} = $req;
 		$self->{paired_connection}->print($req->as_string);
 	}
 }

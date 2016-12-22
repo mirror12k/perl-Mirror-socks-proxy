@@ -43,9 +43,7 @@ sub on_data {
 
 		$hostport = $mir->on_socks4_handshake($self, $hostport);
 
-		warn "debug connecting";
 		my $connection = Iron::TCP->new(hostport => $hostport);
-		warn "debug connected";
 		if ($connection and $connection->connected) {
 			# say "socks connected $hostport";
 			$self->print("\0\x5a\0\0\0\0\0\0");

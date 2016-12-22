@@ -73,34 +73,17 @@ sub on_request {
 	return
 }
 
-=head2 $mir->on_response_head($con, $res)
+=head2 $mir->on_response($con, $req, $res)
 
-overridable event called when a new HTTP/HTTPS response head is recieved by a service connection.
-
-currently no extentions are allowed (TODO).
-
-=cut
-
-sub on_response_head {
-	my ($self, $con, $res) = @_;
-
-	say "got response head: ", $res->status_line;
-
-	return $res
-}
-
-=head2 $mir->on_response($con, $res)
-
-overridable event called when a full HTTP/HTTPS response with content is recieved by a service connection.
+overridable event called when a full HTTP/HTTPS response with content is recieved by a service connection. the last known HTTP::Request is also passed in as $req.
 
 currently no extentions are allowed (TODO).
 
 =cut
 
 sub on_response {
-	my ($self, $con, $res) = @_;
-
-	say "got response: ", $res->status_line;
+	my ($self, $con, $req, $res) = @_;
+	say "got response to ", $req->method . " " . $req->uri, " : ", $res->status_line;
 
 	return $res
 }
