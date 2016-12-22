@@ -61,10 +61,10 @@ sub on_data {
 		return $mir->disconnect_connection($self) unless $socks_version == 4;
 		return $mir->disconnect_connection($self) unless $command_code == 1;
 
-		my $host;
+		my $hostport;
 		if ($ip eq '0.0.0.1') {
 			if ($self->{buffer} =~ /\A(.)(.)(.{2})(.{4})([^\0]*\0)([^\0]*)\0/) {
-				$host = "$6";
+				$hostport = "$6:$port";
 				$self->{buffer} = $';
 				$self->{is_socks4a_connection} = 1;
 			} else {
@@ -72,11 +72,12 @@ sub on_data {
 				return $mir->disconnect_connection($self);
 			}
 		} else {
-			$host = "$ip";
+			$hostport = "$ip:$port";
 			$self->{buffer} = $';
 		}
 
-		my $hostport = "$host:$port";
+		$hostport = $mir->on_socks4_handshake($self, $hostport);
+		$self->{socks_hostport} = $hostport;
 
 		my $connection;
 		# TODO: peek the socket and promote it to SSL only after we have established it to be SSL
@@ -88,7 +89,7 @@ sub on_data {
 		}
 
 		if ($connection and $connection->connected) {
-			say "socks connected $hostport";
+			# say "socks connected $hostport";
 			$self->print("\0\x5a\0\0\0\0\0\0");
 			$self->{is_handshake_complete} = 1;
 			$self->{paired_connection} = Mirror::Enchanted::ServiceConnection->new($connection->{sock}, paired_connection => $self);
@@ -96,6 +97,7 @@ sub on_data {
 			$mir->new_connection($self->{paired_connection});
 
 			if ($self->{is_ssl}) {
+				my ($host) = split ':', $hostport;
 				# say "upgrading to ssl on $self->{socket}";
 				my $old_socket = $self->{socket};
 				my $new_socket = IO::Socket::SSL->start_SSL($self->{socket},

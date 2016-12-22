@@ -54,14 +54,17 @@ sub new {
 }
 
 sub encode_reqres_headers {
-	my ($self, $req, $res) = @_;
+	my ($self, $con, $req, $res) = @_;
+
+	my $client_connection = $con->{paired_connection};
+	my $protocol = $client_connection->{is_ssl} ? 'https://' : 'http://';
 
 	my $data = {
 		_timestamp => "$self->{timestamp}_$self->{timestamp_index_formatted}",
 		request => {
 			protocol => $req->protocol,
 			method => $req->method,
-			url => '' . $req->uri, # TODO
+			url => "$protocol$client_connection->{socks_hostport}" . $req->uri,
 		},
 		response => {
 			protocol => $res->protocol,
@@ -84,7 +87,7 @@ sub encode_reqres_headers {
 }
 
 sub output_reqres {
-	my ($self, $req, $res) = @_;
+	my ($self, $con, $req, $res) = @_;
 	if (not defined $self->{timestamp} or $self->{timestamp} != time) {
 		$self->{timestamp} = time;
 		$self->{timestamp_index} = 0;
@@ -94,7 +97,7 @@ sub output_reqres {
 	$self->{timestamp_index_formatted} = sprintf "%02d", $self->{timestamp_index};
 
 	my $log_file = $self->{log_file};
-	$log_file->append($self->encode_reqres_headers($req, $res) . ",\n");
+	$log_file->append($self->encode_reqres_headers($con, $req, $res) . ",\n");
 
 	if ($self->{store_bodies}) {
 		if (length $req->content) {
@@ -112,7 +115,7 @@ sub output_reqres {
 sub on_response {
 	my ($self, $con, $req, $res) = @_;
 
-	$self->output_reqres($req, $res);
+	$self->output_reqres($con, $req, $res);
 
 	return $self->SUPER::on_response($con, $req, $res);
 }

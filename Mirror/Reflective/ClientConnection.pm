@@ -42,6 +42,7 @@ sub on_data {
 		}
 
 		$hostport = $mir->on_socks4_handshake($self, $hostport);
+		$self->{socks_hostport} = $hostport;
 
 		my $connection = Iron::TCP->new(hostport => $hostport);
 		if ($connection and $connection->connected) {
