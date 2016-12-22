@@ -11,6 +11,7 @@ use Mirror::Enchanted::ClientConnection;
 use SSLCertificateFactory;
 
 
+
 =pod
 
 =head1 Mirror::Enchanted
@@ -24,8 +25,6 @@ note that you will need to generate a root CA certificate and install it in your
 note: the code cheats a little with ssl by simply looking for port 443.
 optimally the server would peek the socket and read an ssl frame from it.
 also note that websockets and anything else other than http is unsupported.
-
-=cut
 
 =head2 Mirror::Enchanted->new(%args)
 

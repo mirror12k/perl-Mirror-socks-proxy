@@ -27,8 +27,6 @@ when creating a Mirror::Server, you should set $SIG{PIPE} = 'IGNORE'; because si
 to use this server effectively, one should extend it, and override the new_socket method to produce connections of a useful type.
 any connnection logic should then be placed into the connection class (recommended to subclass Mirror::SocketConnection).
 
-=cut
-
 =head2 Mirror::Server->new(%args)
 
 creates a new mirror server. pass in a 'port' argument to specify the server port, defaults to 3210.
