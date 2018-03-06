@@ -30,9 +30,20 @@ sub get_random_header {
 	my $random_header;
 	do {
 		$random_header = $self->{dream_headers}[int rand @{$self->{dream_headers}}];
-	} while ($random_header =~ /\A(content-type|content-length|content-encoding|transfer-encoding):/);
+	} while ($random_header =~ /\A(content-type|content-length|content-encoding|transfer-encoding|location):/i);
 
 	return $random_header;
+}
+
+sub get_random_url {
+	my ($self) = @_;
+
+	my $random_url;
+	do {
+		$random_url = $self->{dream_urls}[int rand @{$self->{dream_urls}}];
+	} while ($random_url eq '');
+
+	return $random_url;
 }
 
 sub get_random_html_tags {
@@ -52,7 +63,7 @@ sub get_random_html_tags {
 sub substitute_html_tags {
 	my ($html, $replacement) = @_;
 
-	die "not a tag" unless $replacement =~/\A<([a-zA-Z_][a-zA-Z_0-9]*)\b/s;
+	die "not a tag: $replacement" unless $replacement =~/\A<([a-zA-Z_][a-zA-Z_0-9]*)\b/s;
 	my $replacement_tag = lc $1;
 
 	while ($html =~ /<([a-zA-Z_][a-zA-Z_0-9]*)\b[^>]*?(\/\s*>|>.*?<\/\1>)/sg) {
@@ -81,6 +92,47 @@ sub generate_random_headers {
 	return map $self->get_random_header, 1 .. $count;
 }
 
+
+sub generate_random_response {
+	my ($self) = @_;
+
+	my $res;
+	if (rand() < 0.2) {
+		my $redirect_url = $self->get_random_url;
+
+		my @statuses = (
+			"301 Moved Permanently",
+			"302 Found",
+			"303 See Other",
+			"307 Temporary Redirect",
+		);
+
+		my $body = '';
+
+		my $random_status = $statuses[int rand @statuses];
+		my $text = "HTTP/1.1 $random_status\r\n" . (join '', map "$_\r\n", $self->generate_random_headers)
+			. "Location: " . $redirect_url . "\r\n"
+			. "Content-Length: " . length($body) . "\r\n"
+			. "\r\n";
+
+		$res = HTTP::Response->parse("$text$body");
+	} else {
+		my $donor_html = $self->get_random_html;
+		my $victim_html = $self->get_random_html;
+		$victim_html = substitute_html_tags($victim_html, $_) foreach get_random_html_tags($donor_html);
+		my $body = $victim_html;
+
+		my $text = "HTTP/1.1 200 OK\r\n" . (join '', map "$_\r\n", $self->generate_random_headers)
+			. "Content-Length: " . length($body) . "\r\n"
+			. "\r\n";
+
+		$res = HTTP::Response->parse("$text$body");
+	}
+
+	# say "debug: ", $res->as_string;
+	return $res;
+}
+
 # override new_socket to instantiate our special connection class with all of our logic in it
 sub new_socket {
 	my ($self, $socket) = @_;
@@ -92,18 +144,8 @@ sub on_request {
 	my ($self, $con, $req) = @_;
 	say "got request: ", $req->method . " " . $req->uri;
 
-	my $donor_html = $self->get_random_html;
-	my $victim_html = $self->get_random_html;
-	$victim_html = substitute_html_tags($victim_html, $_) foreach get_random_html_tags($donor_html);
-	my $body = $victim_html;
-
-	my $text = "HTTP/1.1 200 OK\r\n" . (join '', map "$_\r\n", $self->generate_random_headers)
-		. "Content-Length: " . length($body) . "\r\n"
-		. "\r\n";
-
-	# my $res = HTTP::Response->parse("HTTP/1.1 200 OK\r\nContent-Length: 0\r\nConnection: keep-alive\r\n\r\n");
-	my $res = HTTP::Response->parse("$text$body");
-	return $res
+	my $res = $self->generate_random_response;
+	return $res;
 }
 
 # sub on_response {
