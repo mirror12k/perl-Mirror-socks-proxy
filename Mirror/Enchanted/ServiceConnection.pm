@@ -35,7 +35,7 @@ sub on_data {
 				$self->on_data($mir) if length $self->{buffer};
 			} else {
 				$res = $mir->on_response($self, $self->{request}, $res);
-				$self->{paired_connection}->print($res->as_string);
+				$self->{paired_connection}->print($res->as_string("\r\n"));
 			}
 		}
 	} elsif (defined $self->{content_length}) {
@@ -45,7 +45,7 @@ sub on_data {
 			$self->{buffer} = substr $self->{buffer}, $self->{content_length};
 			$self->{response} = $mir->on_response($self, $self->{request}, $self->{response});
 
-			$self->{paired_connection}->print($self->{response}->as_string);
+			$self->{paired_connection}->print($self->{response}->as_string("\r\n"));
 		}
 	} elsif (defined $self->{chunked_content_length} and length $self->{buffer} >= $self->{chunked_content_length} + 2) {
 		$self->{response}->content($self->{response}->content . substr $self->{buffer}, 0, $self->{chunked_content_length});
@@ -58,7 +58,7 @@ sub on_data {
 			my $content = $self->{response}->content;
 			my $length_info = sprintf "%x\r\n", length $content;
 			$self->{response}->content("$length_info$content\r\n0\r\n\r\n");
-			$self->{paired_connection}->print($self->{response}->as_string);
+			$self->{paired_connection}->print($self->{response}->as_string("\r\n"));
 			$self->{response}->content($content);
 		}
 		$self->{chunked_content_length} = undef;
