@@ -54,6 +54,7 @@ sub get_random_html_tags {
 		pos ($html) = $+[1];
 		push @tags, $&;
 	}
+	return unless @tags;
 
 	# return @tags;
 	my $count = 4 + int rand 20;
@@ -82,7 +83,7 @@ sub get_random_html {
 	my ($self) = @_;
 
 	my $file = $self->{dream_body_files}[int rand @{$self->{dream_body_files}}];
-	say "getting file: $file";
+	# say "getting file: $file";
 	return $file->read;
 }
 
