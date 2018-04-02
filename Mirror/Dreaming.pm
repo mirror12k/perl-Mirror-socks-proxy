@@ -67,7 +67,7 @@ sub substitute_html_tags {
 	die "not a tag: $replacement" unless $replacement =~/\A<([a-zA-Z_][a-zA-Z_0-9]*)\b/s;
 	my $replacement_tag = lc $1;
 
-	# my $start_render_time = time;
+	my $start_render_time = time;
 
 	while ($html =~ /<([a-zA-Z_][a-zA-Z_0-9]*+)\b[^>]*?(\/\s*>|>.*?<\/\1>)/sg) {
 		if ($replacement_tag eq lc $1) {
@@ -76,10 +76,10 @@ sub substitute_html_tags {
 			}
 		}
 		pos ($html) = $+[1];
-		# if ($start_render_time - time >= 5) {
-		# 	warn "exceeded 5 second render time!";
-		# 	return $html;
-		# }
+		if (time - $start_render_time >= 5) {
+			warn "substitute_html_tags exceeded 5 second render time!";
+			return $html;
+		}
 	}
 
 	return $html;
