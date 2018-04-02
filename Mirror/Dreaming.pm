@@ -148,7 +148,22 @@ sub generate_random_response {
 		# $victim_html = substitute_html_tags($victim_html, $_) foreach get_random_html_tags($donor_html);
 		my $body = $victim_html;
 
-		my $text = "HTTP/1.1 200 OK\r\n" . (join '', map "$_\r\n", $self->generate_random_headers)
+		my @statuses = (
+			"403 Forbidden",
+			"404 Not Found",
+			"200 OK",
+			"200 OK",
+			"200 OK",
+			"200 OK",
+			"200 OK",
+			"200 OK",
+			"200 OK",
+			"200 OK",
+			"200 OK",
+		);
+
+		my $random_status = $statuses[int rand @statuses];
+		my $text = "HTTP/1.1 $random_status\r\n" . (join '', map "$_\r\n", $self->generate_random_headers)
 			. "Content-Length: " . length($body) . "\r\n"
 			. "\r\n";
 
