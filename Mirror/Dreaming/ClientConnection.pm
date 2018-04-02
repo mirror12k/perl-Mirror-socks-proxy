@@ -27,6 +27,7 @@ sub on_data {
 		if ($self->{is_header}) { # receive header
 			if ($self->{buffer} =~ /\r?\n\r?\n/s) {
 				$self->{buffer} = $';
+				# say "debug request:", "$`\r\n\r\n";
 				my $req = HTTP::Request->parse("$`\r\n\r\n");
 
 				if (defined $req->header('Content-Length') and 0 < int $req->header('Content-Length')) {

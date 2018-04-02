@@ -50,7 +50,7 @@ sub get_random_html_tags {
 	my ($html) = @_;
 
 	my @tags;
-	while ($html =~ /<([a-zA-Z_][a-zA-Z_0-9]*)\b[^>]*?(\/\s*>|>.*?<\/\1>)/sg) {
+	while ($html =~ /<([a-zA-Z_][a-zA-Z_0-9]*+)\b[^>]*?(\/\s*>|>.*?<\/\1>)/sg) {
 		pos ($html) = $+[1];
 		push @tags, $&;
 	}
@@ -67,16 +67,40 @@ sub substitute_html_tags {
 	die "not a tag: $replacement" unless $replacement =~/\A<([a-zA-Z_][a-zA-Z_0-9]*)\b/s;
 	my $replacement_tag = lc $1;
 
-	while ($html =~ /<([a-zA-Z_][a-zA-Z_0-9]*)\b[^>]*?(\/\s*>|>.*?<\/\1>)/sg) {
+	# my $start_render_time = time;
+
+	while ($html =~ /<([a-zA-Z_][a-zA-Z_0-9]*+)\b[^>]*?(\/\s*>|>.*?<\/\1>)/sg) {
 		if ($replacement_tag eq lc $1) {
 			if (rand() < 0.1) {
 				substr($html, $-[0], $+[0] - $-[0]) = $replacement;
 			}
 		}
 		pos ($html) = $+[1];
+		# if ($start_render_time - time >= 5) {
+		# 	warn "exceeded 5 second render time!";
+		# 	return $html;
+		# }
 	}
 
 	return $html;
+}
+
+sub mangle_html_tags {
+	my ($victim_html, $donor_html) = @_;
+
+	# say "rendering";
+
+	my $start_render_time = time;
+	foreach my $tag (get_random_html_tags($donor_html)) {
+		$victim_html = substitute_html_tags($victim_html, $tag);
+		if (time - $start_render_time >= 5) {
+			warn "mangle_html_tags exceeded 5 second render time!";
+			last;
+		}
+	}
+	# say "done rendering";
+
+	return $victim_html;
 }
 
 sub get_random_html {
@@ -120,7 +144,8 @@ sub generate_random_response {
 	} else {
 		my $donor_html = $self->get_random_html;
 		my $victim_html = $self->get_random_html;
-		$victim_html = substitute_html_tags($victim_html, $_) foreach get_random_html_tags($donor_html);
+		$victim_html = mangle_html_tags($victim_html, $donor_html);
+		# $victim_html = substitute_html_tags($victim_html, $_) foreach get_random_html_tags($donor_html);
 		my $body = $victim_html;
 
 		my $text = "HTTP/1.1 200 OK\r\n" . (join '', map "$_\r\n", $self->generate_random_headers)
