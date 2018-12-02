@@ -80,7 +80,11 @@ sub on_data {
 			$self->{is_ssl} = 1;
 		}
 
+		$self->{requested_connection_hostport} = $request_hostport;
+
 		my $hostport = $mir->on_socks4_handshake($self, $request_hostport);
+		$self->{real_connection_hostport} = $hostport;
+
 		if (defined $hostport) {
 			$self->{socks_hostport} = $hostport;
 
