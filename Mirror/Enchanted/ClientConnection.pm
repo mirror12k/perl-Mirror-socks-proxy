@@ -61,10 +61,10 @@ sub on_data {
 		return $mir->disconnect_connection($self) unless $socks_version == 4;
 		return $mir->disconnect_connection($self) unless $command_code == 1;
 
-		my $hostport;
+		my $request_hostport;
 		if ($ip eq '0.0.0.1') {
 			if ($self->{buffer} =~ /\A(.)(.)(.{2})(.{4})([^\0]*\0)([^\0]*)\0/) {
-				$hostport = "$6:$port";
+				$request_hostport = "$6:$port";
 				$self->{buffer} = $';
 				$self->{is_socks4a_connection} = 1;
 			} else {
@@ -72,56 +72,65 @@ sub on_data {
 				return $mir->disconnect_connection($self);
 			}
 		} else {
-			$hostport = "$ip:$port";
+			$request_hostport = "$ip:$port";
 			$self->{buffer} = $';
 		}
 
-		$hostport = $mir->on_socks4_handshake($self, $hostport);
-		$self->{socks_hostport} = $hostport;
-
-		my $connection;
-		# TODO: peek the socket and promote it to SSL only after we have established it to be SSL
-		if ($port == 443) {
+		if ($request_hostport =~ /:443\Z/) {
 			$self->{is_ssl} = 1;
-			$connection = Iron::SSL->new(hostport => $hostport);
-		} else {
-			$connection = Iron::TCP->new(hostport => $hostport);
 		}
 
-		if ($connection and $connection->connected) {
-			# say "socks connected $hostport";
-			$self->print("\0\x5a\0\0\0\0\0\0");
-			$self->{is_handshake_complete} = 1;
-			$self->{paired_connection} = Mirror::Enchanted::ServiceConnection->new($connection->{sock}, paired_connection => $self);
+		my $hostport = $mir->on_socks4_handshake($self, $request_hostport);
+		if (defined $hostport) {
+			$self->{socks_hostport} = $hostport;
 
-			$mir->new_connection($self->{paired_connection});
-
+			my $connection;
+			# TODO: peek the socket and promote it to SSL only after we have established it to be SSL
 			if ($self->{is_ssl}) {
-				my ($host) = split ':', $hostport;
-				# say "upgrading to ssl on $self->{socket}";
-				my $old_socket = $self->{socket};
-				my $new_socket = IO::Socket::SSL->start_SSL($self->{socket},
-					SSL_server => 1,
-					SSL_cert_file => $mir->{cert_factory}->certificate($host),
-					SSL_key_file => $mir->{cert_factory}{certificate_key},
-					Blocking => 0,
-				);
-				warn "failed to ssl handshake insock: $!, $SSL_ERROR" unless $new_socket;
-				return $mir->disconnect_connection($self) unless $new_socket;
-				# say "upgraded to ssl on $self->{socket}";
-				$self->{socket} = $new_socket;
-
-				$mir->update_connection_socket($old_socket, $self);
+				$connection = Iron::SSL->new(hostport => $hostport);
+			} else {
+				$connection = Iron::TCP->new(hostport => $hostport);
 			}
 
-			# tail call on_data if the client sent more data than just the header
-			if (length $self->{buffer}) {
-				say "looping ondata";
-				$self->on_data($mir);
+			if ($connection and $connection->connected) {
+				# say "socks connected $hostport";
+				$self->print("\0\x5a\0\0\0\0\0\0");
+				$self->{is_handshake_complete} = 1;
+				$self->{paired_connection} = Mirror::Enchanted::ServiceConnection->new($connection->{sock}, paired_connection => $self);
+
+				$mir->new_connection($self->{paired_connection});
+			} else {
+				$self->print("\0\x5b\0\0\0\0\0\0");
+				return $mir->disconnect_connection($self);
 			}
 		} else {
-			$self->print("\0\x5b\0\0\0\0\0\0");
-			return $mir->disconnect_connection($self);
+			warn "creating a mock-connection for $request_hostport";
+			$self->print("\0\x5a\0\0\0\0\0\0");
+			$self->{is_handshake_complete} = 1;
+		}
+
+		if ($self->{is_ssl}) {
+			my ($host) = split ':', $request_hostport;
+			# say "upgrading to ssl on $self->{socket}";
+			my $old_socket = $self->{socket};
+			my $new_socket = IO::Socket::SSL->start_SSL($self->{socket},
+				SSL_server => 1,
+				SSL_cert_file => $mir->{cert_factory}->certificate($host),
+				SSL_key_file => $mir->{cert_factory}{certificate_key},
+				Blocking => 0,
+			);
+			warn "failed to ssl handshake insock: $!, $SSL_ERROR" unless $new_socket;
+			return $mir->disconnect_connection($self) unless $new_socket;
+			# say "upgraded to ssl on $self->{socket}";
+			$self->{socket} = $new_socket;
+
+			$mir->update_connection_socket($old_socket, $self);
+		}
+
+		# tail call on_data if the client sent more data than just the header
+		if (length $self->{buffer}) {
+			# say "looping ondata";
+			$self->on_data($mir);
 		}
 	} else {
 		warn "invalid client handshake from $self->{peer_address}";

@@ -61,6 +61,8 @@ sub setup {
 		# Blocking => 1,
 	) or die "ERROR: failed to set up listening socket: $!";
 	$self->{selector} = IO::Select->new($self->{server_socket});
+
+	say ref($self) . " listening on port $self->{port}";
 }
 
 =head2 $mir->start
