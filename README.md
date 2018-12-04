@@ -1,5 +1,5 @@
 # perl-Mirror-socks-proxy
-A set of utility libraries to create/run SOCKS proxies.
+A set of utility libraries to create/run SOCKS proxies, record and replay web traffic, and mock and modify content.
 
 Requires the [Sugar](https://github.com/mirror12k/perl-Sugar-utility-library) and
 [Iron](https://github.com/mirror12k/perl-Iron-networking-library) perl libraries
@@ -24,6 +24,14 @@ with the help of SSLCertificateFactory which generates fresh certificates for ea
 
 [See the pod documentation for more info](Mirror/Enchanted.pm)
 
+## Miror::Cursed
+Extension of Mirror::Enchanted which heavily manipulates traffic.
+Can be immediately started by running `perl Mirror/Cursed.pm my_config.json`.
+A config file can be used to arbitrarily allow/block/mock/override any domain or wildcard domain.
+It can even be used to inject content directly into pages.
+
+[See the pod documentation for more info](Mirror/Cursed.pm)
+
 ## Miror::Crystalline
 Extension of Mirror::Enchanted which records all http/https traffic to disk.
 Can be immediately started by running `perl Mirror/Crystalline.pm`.
@@ -31,6 +39,14 @@ It records a single file of http messages in har-archive-like json format and st
 to ease header searching.
 
 [See the pod documentation for more info](Mirror/Crystalline.pm)
+
+## Miror::Dreaming
+Extension of Mirror::Enchanted which replays traffic as recorded by Mirror::Crystalline.
+Can be immediately started by running `perl Mirror/Dreaming.pm`.
+It plays back responses based on the url requested, which lets you test simple interactions without having to go to an external server for it.
+Alternatively it can be set to play responses randomly for browser stress testing.
+
+[See the pod documentation for more info](Mirror/Dreaming.pm)
 
 ## SSLCertificateFactory
 This deserves a repo of its own.

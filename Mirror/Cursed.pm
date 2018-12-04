@@ -263,7 +263,7 @@ sub on_response {
 
 		my $content_type;
 		if (defined $res->header('content-type')) {
-			($content_type) = grep s/\A\s*(.*?)\s*\Z/$1/rs, split ';', $res->header('content-type');
+			($content_type) = map s/\A\s*(.*?)\s*\Z/$1/rs, split ';', $res->header('content-type');
 		}
 		
 		my $path = $req->uri->path;

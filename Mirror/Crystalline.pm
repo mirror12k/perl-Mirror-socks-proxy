@@ -45,6 +45,7 @@ sub new {
 	$self->{store_bodies} = $args{store_bodies} // 1;
 	$self->{logs_directory} = Sugar::IO::Dir->new($args{logs_directory} // 'http_history');
 	$self->{log_file} = Sugar::IO::File->new($args{log_file} // "$self->{logs_directory}/headers.json");
+	$self->{replace_encoding} = $args{replace_encoding} // 1;
 	$self->{log_file_first_write} = 1;
 
 	die "please create the logs_directory at '$self->{logs_directory}'" unless $self->{logs_directory}->exists;
@@ -104,6 +105,17 @@ sub output_reqres {
 			$res_file->write($res->content);
 		}
 	}
+}
+
+sub on_request {
+	my ($self, $con, $req) = @_;
+
+	if ($self->{replace_encoding} and defined $req->header('accept-encoding')) {
+		$req->remove_header('accept-encoding');
+		$req->header('accept-encoding' => 'gzip');
+	}
+
+	return;
 }
 
 sub on_response {

@@ -108,7 +108,7 @@ sub on_data {
 				return $mir->disconnect_connection($self);
 			}
 		} else {
-			warn "creating a mock-connection for $request_hostport";
+			# warn "creating a mock-connection for $request_hostport";
 			$self->print("\0\x5a\0\0\0\0\0\0");
 			$self->{is_handshake_complete} = 1;
 		}
