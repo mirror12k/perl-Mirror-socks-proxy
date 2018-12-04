@@ -26,8 +26,6 @@ with bodies being stored seperately in individual timestamped files.
 
 creates a new mirror server. see Mirror::Enchanted for any inherited arguments. other optional arguments:
 
-suffix_headers: defaults to 1. specifies the format to write to the logs. if 1, it will specifically place the headers towards the end of the log entry.
-
 store_bodies: defaults to 1. bool which dictates whether to store request and response bodies in files or to skip them.
 
 logs_directory: defaults to "http_history". directory path where the logs will be written to. must already exist before hand otherwise ->new dies.
@@ -43,10 +41,10 @@ sub new {
 	my ($class, %args) = @_;
 	my $self = $class->SUPER::new(%args);
 
-	$self->{suffix_headers} = $args{suffix_headers} // 1;
 	$self->{store_bodies} = $args{store_bodies} // 1;
 	$self->{logs_directory} = Sugar::IO::Dir->new($args{logs_directory} // 'http_history');
-	$self->{log_file} = Sugar::IO::File->new($args{log_file} // "$self->{logs_directory}/http_log");
+	$self->{log_file} = Sugar::IO::File->new($args{log_file} // "$self->{logs_directory}/headers.json");
+	$self->{log_file_first_write} = 1;
 
 	die "please create the logs_directory at '$self->{logs_directory}'" unless $self->{logs_directory}->exists;
 
@@ -73,15 +71,8 @@ sub encode_reqres_headers {
 		},
 	};
 
-	if ($self->{suffix_headers}) {
-		$data->{zheaders} = {
-			request_headers => { $req->headers->flatten },
-			response_headers => { $res->headers->flatten },
-		};
-	} else {
-		$data->{request}{headers} = { $req->headers->flatten };
-		$data->{response}{headers} = { $res->headers->flatten };
-	}
+	$data->{request}{headers} = { $req->headers->flatten };
+	$data->{response}{headers} = { $res->headers->flatten };
 
 	return JSON->new->canonical->encode($data)
 }
@@ -96,18 +87,20 @@ sub output_reqres {
 	}
 	$self->{timestamp_index_formatted} = sprintf "%02d", $self->{timestamp_index};
 
-	my $log_file = $self->{log_file};
-	$log_file->append($self->encode_reqres_headers($con, $req, $res) . ",\n");
+	my $prefix = $self->{log_file_first_write} ? '[' : ',';
+	$self->{log_file_first_write} = 0;
+
+	$self->{log_file}->append($prefix . $self->encode_reqres_headers($con, $req, $res));
 
 	if ($self->{store_bodies}) {
 		if (length $req->content) {
-			my $req_file = $self->{logs_directory}->new_file("$self->{timestamp}_$self->{timestamp_index_formatted}_req");
-			$req_file->write($req->decoded_content);
+			my $req_file = $self->{logs_directory}->new_file("$self->{timestamp}_$self->{timestamp_index_formatted}_req.body");
+			$req_file->write($req->content);
 		}
 
 		if (length $res->content) {
-			my $res_file = $self->{logs_directory}->new_file("$self->{timestamp}_$self->{timestamp_index_formatted}_res");
-			$res_file->write($res->decoded_content);
+			my $res_file = $self->{logs_directory}->new_file("$self->{timestamp}_$self->{timestamp_index_formatted}_res.body");
+			$res_file->write($res->content);
 		}
 	}
 }
@@ -122,7 +115,15 @@ sub on_response {
 
 sub main {
 	$SIG{PIPE} = 'IGNORE';
-	Mirror::Crystalline->new->start;
+
+	my $svr = __PACKAGE__->new;
+
+	$SIG{INT} = sub {
+		$svr->{log_file}->append(']');
+		die "server shutdown";
+	};
+
+	$svr->start;
 }
 
 caller or main(@ARGV);

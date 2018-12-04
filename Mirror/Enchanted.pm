@@ -67,7 +67,7 @@ alternatively return an HTTP::Response object to prevent the request from being 
 
 sub on_request {
 	my ($self, $con, $req) = @_;
-	say "got request: ", $req->method . " " . $req->uri;
+	say "got request: ", $req->method . " $con->{requested_connection_hostport}" . $req->uri;
 
 	return
 }
@@ -82,7 +82,8 @@ currently no extentions are allowed (TODO).
 
 sub on_response {
 	my ($self, $con, $req, $res) = @_;
-	say "got response to ", $req->method . " " . $req->uri, " : ", $res->status_line;
+	say "got response to ", $req->method, " $con->{paired_connection}{requested_connection_hostport}",
+			$req->uri, " : ", $res->status_line;
 
 	return $res
 }
