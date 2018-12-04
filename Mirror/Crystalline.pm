@@ -21,6 +21,7 @@ extension of Mirror::Enchanted's http/https intercepting proxy.
 
 stores all request/response data it receives in a sorted json log (format inspired by HAR format)
 with bodies being stored seperately in individual timestamped files.
+recorded logs can then be played back with Mirror::Dreaming in order to view the snap-shot of history as it was.
 
 =head2 Mirror::Crystalline->new(%args)
 
@@ -85,7 +86,7 @@ sub output_reqres {
 	} else {
 		$self->{timestamp_index}++;
 	}
-	$self->{timestamp_index_formatted} = sprintf "%02d", $self->{timestamp_index};
+	$self->{timestamp_index_formatted} = sprintf "%03d", $self->{timestamp_index};
 
 	my $prefix = $self->{log_file_first_write} ? '[' : ',';
 	$self->{log_file_first_write} = 0;
